@@ -1,0 +1,12 @@
+{
+  "calibration": 0.3083103245496731,
+  "episodes": "runs/mvp/integration_complete_day_v2/evaluation_test/episodes.parquet",
+  "lora_mae": 0.019669514410275958,
+  "lora_rmse": 0.05358174629467639,
+  "moment_mae": 0.02087460414462695,
+  "moment_rmse": 0.05732546755346768,
+  "persistence_mae": 0.010426953431423603,
+  "persistence_rmse": 0.040109348038578456,
+  "seconds": 2.8133574719977332,
+  "windows": 6258
+}

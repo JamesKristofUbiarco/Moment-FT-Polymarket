@@ -1,0 +1,18 @@
+{
+  "benchmark_only": true,
+  "complete": true,
+  "component_seconds_sum": 10909.540104389991,
+  "consolidators": 2,
+  "files": 4,
+  "observed_overlap_factor": 1.9695292722878728,
+  "original_bytes": 27448623212,
+  "records": [
+    "orderbook/date=2026-06-06/data_0.parquet",
+    "orderbook/date=2026-02-26/data_0.parquet",
+    "orderbook/date=2026-04-26/data_0.parquet",
+    "orderbook/date=2026-06-09/data_0.parquet"
+  ],
+  "rows": 5054034321,
+  "wall_seconds": 5539.161187917009,
+  "workers": 4
+}

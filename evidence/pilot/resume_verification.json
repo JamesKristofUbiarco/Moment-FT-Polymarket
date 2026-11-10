@@ -1,0 +1,8 @@
+{
+  "continuous_steps": 36,
+  "continuous_windows": 9002,
+  "max_parameter_difference": 0.0,
+  "passed": true,
+  "resumed_steps": 36,
+  "resumed_windows": 9002
+}
