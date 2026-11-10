@@ -16,7 +16,7 @@ ROOT = PROJECT / 'runs/mvp'
 ROOT.mkdir(parents=True, exist_ok=True)
 UV = shutil.which('uv') or str(Path.home()/'.local/bin/uv')
 PYTHON = PROJECT / '.venv/bin/python'
-CONFIG = {'revision': 'efe472f1f00a62f2cab1fed2851da439d9c1fe11', 'budget_hours': 48,
+CONFIG = {'revision': 'efe472f1f00a62f2cab1fed2851da439d9c1fe11', 'budget_hours': 120,
           'seed': 2026, 'root': str(ROOT), 'microbatch': 256}
 CONFIG
 ''')
@@ -63,14 +63,14 @@ code('''def launch(module, arguments, name):
 # launch('polymarket_mvp.runner',['--root',str(ROOT),'--date','2026-06-09','--tag','notebook'],'polymarket-bench-notebook')
 ''')
 md('''## Puerta de rendimiento y FULL
-La proyección usa archivos completos y throughput real de MOMENT. La política por defecto bloquea una duración proyectada superior a 48 horas o un presupuesto de disco insuficiente. Las estimaciones se distinguen de tiempos ejecutados.
+La proyección usa archivos completos y throughput real de MOMENT. La política por defecto bloquea una duración proyectada superior al presupuesto configurado (120 horas por defecto) o un presupuesto de disco insuficiente. Las estimaciones se distinguen de tiempos ejecutados.
 ''')
-code('''run_python(f"from polymarket_mvp.reporting import projection; import json; print(json.dumps(projection({str(ROOT)!r}),indent=2))")
+code('''run_python(f"from polymarket_mvp.reporting import projection; import json; print(json.dumps(projection({str(ROOT)!r}, budget_hours={CONFIG['budget_hours']}),indent=2))")
 projection_path=ROOT/'projection.json'
 projection=json.loads(projection_path.read_text())
 print('FULL habilitado:',projection.get('performance_gate',False) and projection.get('storage_gate',False))
 # Habilitar solo con las puertas verificadas; execute vuelve a comprobarlas:
-# launch('polymarket_mvp.full',['--root',str(ROOT),'--projection',str(projection_path)],'polymarket-full')
+# launch('polymarket_mvp.full',['--root',str(ROOT),'--projection',str(projection_path),'--budget-hours',str(CONFIG['budget_hours'])],'polymarket-full')
 ''')
 md('''## Características, ventanas y selección
 Los Parquet guardan aperturas, cierres, extremos, actividad, estados de calidad y procedencia. No dependen del target de MOMENT.

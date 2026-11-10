@@ -44,7 +44,7 @@ uv run python -c 'from polymarket_mvp.reporting import projection; print(project
 uv run python -m polymarket_mvp.full --root runs/mvp --projection runs/mvp/projection.json
 ```
 
-La última operación falla antes de iniciar FULL si faltan tres benchmarks completos representativos o si las puertas de tiempo/disco no pasan. No es una autorización para una ejecución de varios días. El notebook permite lanzar procesos independientes mediante tmux y verificar su sesión. Consultar también PID, estado y logs; la existencia de un PID antiguo no prueba actividad.
+La última operación usa 120 horas por defecto y falla antes de iniciar FULL si faltan cuatro benchmarks completos representativos y un ensayo end-to-end o si las puertas de tiempo/disco no pasan. No es una autorización para una ejecución de varios días. El notebook permite lanzar procesos independientes mediante tmux y verificar su sesión. Consultar también PID, estado y logs; la existencia de un PID antiguo no prueba actividad.
 
 Para reanudar, repetir los mismos argumentos sobre la misma salida. Una identidad de fuentes o reglas de características diferente exige una salida nueva. Los lotes no son la identidad del resultado; los límites de unidades de confirmación sí se fijan. Los checkpoints de entrenamiento incluyen optimizador, RNG y cursor en límites del optimizador. `train(..., resume=True)` valida identidad y SHA256.
 
@@ -70,3 +70,17 @@ Los reportes exactos, límites de medición y estados actuales están en `runs/m
 - [Piloto LoRA](evidence/pilot/). Incluye el adaptador exploratorio del 6 de junio, los resultados de validación y prueba, y la verificación de recuperación del entrenamiento.
 
 El procesamiento integral y el fine-tuning definitivo están pendientes. Los originales, derivados voluminosos, entornos y estados de ejecución permanecen en el espacio de trabajo local.
+
+## Continuación FULL
+
+El presupuesto activo empieza al iniciar FULL y se registra en `runs/mvp/mission.json`. Para reanudar, usa la misma proyección congelada y el presupuesto original. Si se autoriza tiempo adicional, agrega `--extra-hours H` una sola vez para registrar la extensión. Las pausas entre intentos se registran por separado. Si hubo un apagado abrupto, el último heartbeat confirma el mínimo de actividad antes de la interrupción.
+
+```sh
+tmux new-session -d -s polymarket-full 'exec uv run --no-sync python -u -m polymarket_mvp.full --root runs/mvp --projection runs/mvp/full_launch_projection.json --budget-hours 120 >>runs/mvp/full.log 2>&1'
+tmux has-session -t polymarket-full
+cat runs/mvp/full_status.json runs/mvp/full_progress.json
+```
+
+El ensayo de preparación se reproduce con `uv run python herramientas/preflight_full.py runs/mvp`. La proyección acepta una ruta explícita a su recibo mediante el argumento `preparation`. Validación y prueba se empaquetan por separado y conservan todas sus ventanas elegibles. Cada paquete temporal se libera después de confirmar los hashes del resultado de su evaluación.
+
+Consulta la [auditoría y presupuesto del lanzamiento](evidence/benchmark/full_launch_audit.md).
