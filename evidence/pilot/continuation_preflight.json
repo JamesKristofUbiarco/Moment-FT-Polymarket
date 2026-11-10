@@ -1,0 +1,282 @@
+{
+  "adapter": {
+    "checkpoint_sha256": "3ab1a67c5c2d78d130af57e0b38193b4edb0b5fd5d70081fbf20b84d2fc1cf06",
+    "max_parameter_difference": 0.0,
+    "model_revision": "411e288267f82cce86296dbe4d6c8bc533cc162f",
+    "passed": true,
+    "trained_tensors": 34
+  },
+  "census": {
+    "canonical_unique": true,
+    "eligible": 21247,
+    "excluded": {
+      "insufficient_complete_patches": 414240,
+      "split_boundary_or_outside": 53134
+    },
+    "final_independent_test": false,
+    "identity": "87757df68d226de51b977204f9d1480be1f55ddfafef1f3bb897fd469274f4b0",
+    "index": "/home/dirac/Documents/ChatGPT/Zucco/Moment-FT-Polymarket/runs/mvp/preflight_full/census/index.parquet",
+    "index_projection_passes": 1,
+    "normalized_passes": 1,
+    "seconds": 19.735457319999114,
+    "source_derived_passes": 1,
+    "source_footer_passes": 1,
+    "split_counts": {
+      "test": 6258,
+      "train": 9002,
+      "validation": 5987
+    },
+    "splits": {
+      "test": [
+        1780789248,
+        1780790400
+      ],
+      "train": [
+        1780704000,
+        1780788224
+      ],
+      "validation": [
+        1780788224,
+        1780789248
+      ]
+    },
+    "staging_policy": "safe timestamp frontier; normalized days reclaimed",
+    "total_windows": 488621,
+    "window_universe": "observed asset-condition blocks only; blocks without events are not enumerated"
+  },
+  "complete": true,
+  "consolidated": {
+    "events": 93595651,
+    "output_bytes": 440614812,
+    "seconds": 53.41897547400731,
+    "series_rows": 28175552,
+    "sparse_merge": true
+  },
+  "download": {
+    "network_seconds": 10.374866976009798,
+    "original_bytes": 510963243,
+    "path": "orderbook/date=2026-06-06/data_0.parquet",
+    "payload_bytes": 510963243,
+    "requests": 1,
+    "revision": "efe472f1f00a62f2cab1fed2851da439d9c1fe11",
+    "seconds": 10.717421812994871,
+    "verification_seconds": 0.3424791470024502,
+    "verified_sha256": "02d8f9439e6d88519bcce1676e0ba032197782dad8386c63391f82956c61a925"
+  },
+  "equivalence": {
+    "all_fields_compared": true,
+    "all_rows_compared": 28175552,
+    "max_reported_volume_delta": 0.0,
+    "passed": true
+  },
+  "exploratory": true,
+  "ingest": {
+    "batch_size": 262144,
+    "complete": true,
+    "current_attempt_seconds": 67.05079282799852,
+    "declared_rows": 93595651,
+    "derived_bytes": 985046114,
+    "dictionary_read": true,
+    "engine_code_sha256": "a27f0929fd7b3ec9fc595d5416e7f6676fa9621c8fd52ef4ffa01e653899bf96",
+    "events_per_second": 1395873.2336879112,
+    "groups_selected": 934,
+    "logical_source_passes": 1,
+    "metadata_opens": 1,
+    "mode": "local",
+    "orphan_objects": [],
+    "range_payload_bytes": 0,
+    "range_requests": 0,
+    "resources_after": {
+      "cpu_seconds": 147.87,
+      "disk_read_bytes": 606777344,
+      "disk_write_bytes": 1086582784,
+      "peak_rss": 2174996480,
+      "rss": 1824890880
+    },
+    "resources_before": {
+      "cpu_seconds": 11.129999999999999,
+      "disk_read_bytes": 178642944,
+      "disk_write_bytes": 99319808,
+      "peak_rss": 981655552,
+      "rss": 982716416
+    },
+    "revision": "efe472f1f00a62f2cab1fed2851da439d9c1fe11",
+    "row_groups": 934,
+    "rows_confirmed": 93595651,
+    "rows_this_attempt": 93595651,
+    "seconds": 67.05079282799852,
+    "source": "orderbook/date=2026-06-06/data_0.parquet",
+    "stream_groups": false,
+    "timings": {
+      "catalog_seconds": 1.0342447861039545,
+      "footer_seconds": 0.012206882995087653,
+      "group_seconds": 17.90907682897523,
+      "parquet_read_decode_seconds": 2.1944833524612477,
+      "partial_merge_seconds": 2.8073009590734728,
+      "quality_json_seconds": 18.94365959095012,
+      "transform_catalog_group_seconds": 37.97192794304283,
+      "write_hash_commit_seconds": 23.715240047036787
+    }
+  },
+  "packing_seconds": {
+    "test": 0.7298006960045313,
+    "train": 0.8223205140093341,
+    "validation": 0.74124927300727
+  },
+  "recovery_and_mask": {
+    "checked_training_windows": 9002,
+    "decoder_passes_after": 934,
+    "decoder_passes_before": 934,
+    "rows": 93595651,
+    "source_sha256": "02d8f9439e6d88519bcce1676e0ba032197782dad8386c63391f82956c61a925"
+  },
+  "selection": {
+    "activity_edges": [
+      580.0,
+      937.0,
+      1479.0
+    ],
+    "budget_windows": 9002,
+    "cardinality_gate": true,
+    "distribution": [
+      [
+        "v2",
+        0,
+        2253,
+        1763,
+        883
+      ],
+      [
+        "v2",
+        2,
+        2250,
+        1674,
+        841
+      ],
+      [
+        "v2",
+        1,
+        2250,
+        1822,
+        916
+      ],
+      [
+        "v2",
+        3,
+        2249,
+        1209,
+        607
+      ]
+    ],
+    "eligible_train": 9002,
+    "epoch_definition": "one pass over frozen selection",
+    "excluded_budget": 0,
+    "minimum_windows": 5387,
+    "seed": 2026,
+    "selected": 9002,
+    "selection_sha256": "059bfff88453f8a07711b3851150570474185726efbee142f94e42320d488356"
+  },
+  "source": {
+    "bytes": 510963243,
+    "oid": "4eb537b976b4085ac10c4fff12af2219a221301e",
+    "ordinal": 104,
+    "path": "orderbook/date=2026-06-06/data_0.parquet",
+    "sha256": "02d8f9439e6d88519bcce1676e0ba032197782dad8386c63391f82956c61a925"
+  },
+  "test": {
+    "calibration": 0.3077461323142034,
+    "episodes": "/home/dirac/Documents/ChatGPT/Zucco/Moment-FT-Polymarket/runs/mvp/preflight_full/evaluation_test/episodes.parquet",
+    "lora_mae": 0.019606733118788328,
+    "lora_rmse": 0.053375313766744134,
+    "macro_mae_lora": 0.018702633916473654,
+    "macro_mae_moment": 0.019891944907459103,
+    "macro_mae_persistence": 0.010162800695560534,
+    "moment_mae": 0.020874620964303998,
+    "moment_rmse": 0.057325441584983594,
+    "persistence_mae": 0.010426953431423603,
+    "persistence_rmse": 0.040109348038578456,
+    "seconds": 2.6797650110092945,
+    "windows": 6258
+  },
+  "training": {
+    "benchmark": false,
+    "complete": true,
+    "current_attempt_seconds": 2.106608647998655,
+    "elapsed_seconds": 5.66720992399496,
+    "epoch_definition": "one pass over frozen selection; not over the eligible census",
+    "gradient_verified": true,
+    "identity": {
+      "code_sha256": "4ef7ec2313829d188905238e74bca359997d956e504571adcecb27683c58fb7e",
+      "effective_batch": 256,
+      "lr": 0.0001,
+      "microbatch": 256,
+      "model_revision": "411e288267f82cce86296dbe4d6c8bc533cc162f",
+      "pack_hashes": {
+        "metadata.parquet": "a4ffa67d53eba4fbb58ed72192df40599bc459415fc8f8c5a5136186acdce94f",
+        "observed.npy": "facea9b29b123242c12407742617f2fec89bf1a20001832631ecfe06195b61e9",
+        "target.npy": "6823acdd5c18b42ce48557705d808f3029ed2afc5482b5861703c90347ed0b17",
+        "x.npy": "c45f804319079c3a592d147ede622efb90667cb29636e4236167466e35b5ab24"
+      },
+      "pack_sha256": "a4ffa67d53eba4fbb58ed72192df40599bc459415fc8f8c5a5136186acdce94f",
+      "seed": 2026,
+      "windows": 9002
+    },
+    "optimizer_step_seconds": 5.638955026981421,
+    "optimizer_steps": 36,
+    "parameter_changes": {
+      "base_model.model.encoder.block.0.layer.0.SelfAttention.q.lora_A.default.weight": 0.0012739715166389942,
+      "base_model.model.encoder.block.0.layer.0.SelfAttention.q.lora_B.default.weight": 0.001146665308624506,
+      "base_model.model.encoder.block.0.layer.0.SelfAttention.v.lora_A.default.weight": 0.0018895305693149567,
+      "base_model.model.encoder.block.0.layer.0.SelfAttention.v.lora_B.default.weight": 0.0018186008092015982,
+      "base_model.model.encoder.block.1.layer.0.SelfAttention.q.lora_A.default.weight": 0.0015363972634077072,
+      "base_model.model.encoder.block.1.layer.0.SelfAttention.q.lora_B.default.weight": 0.0013347618514671922,
+      "base_model.model.encoder.block.1.layer.0.SelfAttention.v.lora_A.default.weight": 0.0019282985012978315,
+      "base_model.model.encoder.block.1.layer.0.SelfAttention.v.lora_B.default.weight": 0.0017710357205942273,
+      "base_model.model.encoder.block.2.layer.0.SelfAttention.q.lora_A.default.weight": 0.0016654953360557556,
+      "base_model.model.encoder.block.2.layer.0.SelfAttention.q.lora_B.default.weight": 0.0012735255295410752,
+      "base_model.model.encoder.block.2.layer.0.SelfAttention.v.lora_A.default.weight": 0.001923506148159504,
+      "base_model.model.encoder.block.2.layer.0.SelfAttention.v.lora_B.default.weight": 0.001815581927075982,
+      "base_model.model.encoder.block.3.layer.0.SelfAttention.q.lora_A.default.weight": 0.0016459450125694275,
+      "base_model.model.encoder.block.3.layer.0.SelfAttention.q.lora_B.default.weight": 0.0013263626024127007,
+      "base_model.model.encoder.block.3.layer.0.SelfAttention.v.lora_A.default.weight": 0.0019068308174610138,
+      "base_model.model.encoder.block.3.layer.0.SelfAttention.v.lora_B.default.weight": 0.001763802720233798,
+      "base_model.model.encoder.block.4.layer.0.SelfAttention.q.lora_A.default.weight": 0.0018018744885921478,
+      "base_model.model.encoder.block.4.layer.0.SelfAttention.q.lora_B.default.weight": 0.0015652740839868784,
+      "base_model.model.encoder.block.4.layer.0.SelfAttention.v.lora_A.default.weight": 0.0019253380596637726,
+      "base_model.model.encoder.block.4.layer.0.SelfAttention.v.lora_B.default.weight": 0.001821829006075859,
+      "base_model.model.encoder.block.5.layer.0.SelfAttention.q.lora_A.default.weight": 0.0017105769366025925,
+      "base_model.model.encoder.block.5.layer.0.SelfAttention.q.lora_B.default.weight": 0.0014923741109669209,
+      "base_model.model.encoder.block.5.layer.0.SelfAttention.v.lora_A.default.weight": 0.001909827347844839,
+      "base_model.model.encoder.block.5.layer.0.SelfAttention.v.lora_B.default.weight": 0.001781976199708879,
+      "base_model.model.encoder.block.6.layer.0.SelfAttention.q.lora_A.default.weight": 0.0017135925590991974,
+      "base_model.model.encoder.block.6.layer.0.SelfAttention.q.lora_B.default.weight": 0.001362097100354731,
+      "base_model.model.encoder.block.6.layer.0.SelfAttention.v.lora_A.default.weight": 0.0019031781703233719,
+      "base_model.model.encoder.block.6.layer.0.SelfAttention.v.lora_B.default.weight": 0.0016982359811663628,
+      "base_model.model.encoder.block.7.layer.0.SelfAttention.q.lora_A.default.weight": 0.0018391134217381477,
+      "base_model.model.encoder.block.7.layer.0.SelfAttention.q.lora_B.default.weight": 0.0016315135871991515,
+      "base_model.model.encoder.block.7.layer.0.SelfAttention.v.lora_A.default.weight": 0.0019170898012816906,
+      "base_model.model.encoder.block.7.layer.0.SelfAttention.v.lora_B.default.weight": 0.0017000059597194195,
+      "base_model.model.head.modules_to_save.default.linear.bias": 0.0014619025168940425,
+      "base_model.model.head.modules_to_save.default.linear.weight": 0.0016291886568069458
+    },
+    "trainable_parameters": 118792,
+    "trained_windows": 9002,
+    "vram_peak": 1307582464,
+    "windows_per_second": 1889.514433783484
+  },
+  "validation": {
+    "calibration": 0.3077461323142034,
+    "episodes": "/home/dirac/Documents/ChatGPT/Zucco/Moment-FT-Polymarket/runs/mvp/preflight_full/evaluation_validation/episodes.parquet",
+    "lora_mae": 0.02157640485036511,
+    "lora_rmse": 0.058363024503906076,
+    "macro_mae_lora": 0.021163128693286713,
+    "macro_mae_moment": 0.022271293470551977,
+    "macro_mae_persistence": 0.010550614695472263,
+    "moment_mae": 0.02275157994114159,
+    "moment_rmse": 0.06155036268420759,
+    "persistence_mae": 0.010576665947115456,
+    "persistence_rmse": 0.04232995696772948,
+    "seconds": 2.4607395290076965,
+    "windows": 5987
+  }
+}

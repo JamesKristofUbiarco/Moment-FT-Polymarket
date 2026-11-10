@@ -135,10 +135,10 @@ def select_training(census_root, budget, seed=2026):
     atomic_json(root/'selection.json',report);db.close();return report
 
 
-def pack_windows(census_root, output, split, selected=False):
+def pack_windows(census_root, output, split, selected=False, deadline=None, reserve_bytes=0):
     """Stream compact locators and write memmaps; never materialize the index in RAM."""
     from .storage import digest
-    import fcntl
+    import fcntl, shutil, time
     root=Path(census_root);output=Path(output);output.mkdir(parents=True,exist_ok=True)
     with (output/'pack.lock').open('a') as lock:
         fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
@@ -156,6 +156,11 @@ def pack_windows(census_root, output, split, selected=False):
         db.execute('SET temp_directory=?',[str(output/'spill')]);db.from_parquet(str(index_path)).create_view('idx')
         n=db.execute("SELECT count(*) FROM idx WHERE reason='eligible' AND split=?",[split]).fetchall()[0][0]
         if not n:db.close();raise ValueError('No windows to pack')
+        required = n * (2562 + 256)
+        free = shutil.disk_usage(output).free
+        if free < required + reserve_bytes:
+            db.close()
+            raise OSError(f"Insufficient disk for {split}: {n} windows require {required} bytes plus {reserve_bytes} reserve, {free} free")
         x=np.lib.format.open_memmap(output/'x.npy',mode='w+',dtype=np.float32,shape=(n,512))
         observed=np.lib.format.open_memmap(output/'observed.npy',mode='w+',dtype=np.uint8,shape=(n,512))
         target=np.lib.format.open_memmap(output/'target.npy',mode='w+',dtype=np.int16,shape=(n,))
@@ -164,6 +169,8 @@ def pack_windows(census_root, output, split, selected=False):
         writer=None;cached_key=None;cached=None;i=0;rg_reads=0
         try:
             for batch in reader:
+                if deadline is not None and time.time() >= deadline:
+                    raise TimeoutError(f"Budget reached while packing {split}")
                 table=pa.Table.from_batches([batch])
                 if writer is None:writer=pq.ParquetWriter(output/'metadata.partial.parquet',table.schema,compression='zstd')
                 writer.write_table(table)

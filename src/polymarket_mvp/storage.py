@@ -82,7 +82,12 @@ class Manifest:
         objects=[]
         for path in paths:
             p=Path(path).resolve()
-            objects.append((str(p),digest(p),pq.ParquetFile(p).metadata.num_rows))
+            sha=digest(p)
+            if sha != metadata['sha256'].get(p.name):
+                raise ValueError(f'Cannot retire partials: canonical checksum mismatch for {p}')
+            objects.append((str(p),sha,pq.ParquetFile(p).metadata.num_rows))
+        if sum(rows for _,_,rows in objects)!=metadata['series_rows']:
+            raise ValueError('Cannot retire partials: canonical row count mismatch')
         self.verify()
         with self.db:
             self.db.executemany('INSERT OR REPLACE INTO replacements VALUES (?,?,?)',objects)

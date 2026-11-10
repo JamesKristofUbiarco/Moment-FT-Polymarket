@@ -1,10 +1,13 @@
-import json
+import json,sys
 from pathlib import Path
 import numpy as np
 import pyarrow as pa,pyarrow.parquet as pq
 from polymarket_mvp.download import atomic_json
-root=Path('runs/mvp/benchmarks');old=root/'2026-06-06_local_v7';new=root/'2026-06-06_consolidation_sparse';rows=0;max_volume_delta=0.
+root=Path('runs/mvp/benchmarks')
+old,new=(map(Path,sys.argv[1:]) if len(sys.argv)==3 else (root/'2026-06-06_local_v7',root/'2026-06-06_consolidation_sparse'))
+rows=0;max_volume_delta=0.
 a=json.loads((old/'consolidated.json').read_text());b=json.loads((new/'consolidated.json').read_text())
+assert a['events']==b['events'] and a['series_rows']==b['series_rows']
 for target in b['outputs']:
     target=Path(target);source=old/'series'/target.name
     schema=pq.ParquetFile(target).schema_arrow
@@ -21,5 +24,6 @@ for target in b['outputs']:
                 elif not np.array_equal(u,v,equal_nan=True):raise ValueError(f'Exact field mismatch {name}')
             elif not xx[name].equals(yy[name]):raise ValueError(f'Exact field mismatch {name}')
         rows+=xx.num_rows
+assert rows==b['series_rows']
 atomic_json(new/'equivalence.json',dict(passed=True,all_rows_compared=rows,all_fields_compared=True,max_reported_volume_delta=max_volume_delta))
 print('SPARSE_EQUIVALENCE',rows,max_volume_delta,flush=True)

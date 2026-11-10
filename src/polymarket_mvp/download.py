@@ -40,7 +40,7 @@ def inventory(root):
     return data
 
 
-def download(entry, root):
+def download(entry, root, deadline=None):
     root = Path(root); root.mkdir(parents=True, exist_ok=True)
     dest = root / (entry['path'].split('date=')[1][:10] + '.parquet')
     report = dest.with_suffix('.download.json')
@@ -51,11 +51,13 @@ def download(entry, root):
         raise ValueError('Staging identity mismatch')
     part = dest.with_suffix('.partial')
     if entry['bytes']>=1024**3:
-        return parallel_download(entry,root)
+        return parallel_download(entry,root,deadline=deadline)
     history = dest.with_suffix('.transfers.jsonl')
     start = time.perf_counter(); transferred = 0
     url = f'https://huggingface.co/datasets/{REPOSITORY}/resolve/{REVISION}/{entry["path"]}'
     for attempt in range(12):
+        if deadline is not None and time.time() >= deadline:
+            raise TimeoutError("Download budget reached; transfer fragments retained")
         offset = part.stat().st_size if part.exists() else 0
         got = 0; t = time.perf_counter(); error = None
         try:
@@ -92,7 +94,7 @@ def download(entry, root):
     return dest, r
 
 
-def parallel_download(entry, root, workers=4):
+def parallel_download(entry, root, workers=4, deadline=None):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Lock
     root=Path(root);dest=root/(entry['path'].split('date=')[1][:10]+'.parquet')
@@ -103,6 +105,8 @@ def parallel_download(entry, root, workers=4):
     def fetch(i):
         first=prefix_size+i*chunk;last=min(size,prefix_size+(i+1)*chunk)-1;part=dest.with_suffix(f'.range{i}')
         for attempt in range(12):
+            if deadline is not None and time.time() >= deadline:
+                raise TimeoutError("Download budget reached; range fragments retained")
             offset=part.stat().st_size if part.exists() else 0
             if offset==last-first+1:return part
             got=0;t=time.perf_counter();error=None
