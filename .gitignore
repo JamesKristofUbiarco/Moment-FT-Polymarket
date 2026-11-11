@@ -16,3 +16,6 @@ __pycache__/
 /tests/test_pipeline.py
 /herramientas/medir_mapeo.py
 /herramientas/benchmark_previous.py
+
+# Local execution notes
+/.mvp-progress.md
