@@ -1,6 +1,6 @@
 """Post-ingest catalog audit; never a dependency for producing early features."""
 from pathlib import Path
-import json,os
+import json,os,hashlib
 import duckdb
 from .storage import Manifest
 from .download import atomic_json
@@ -12,24 +12,32 @@ def build_catalog(partition_roots,output):
         root=Path(root);m=Manifest(root/'parts')
         paths.extend(str((root/'parts'/r[0]).resolve()) for r in m.db.execute("SELECT path FROM objects WHERE path LIKE '%_relations.parquet'"))
         m.db.close()
-    db=duckdb.connect();db.execute("SET memory_limit='2GB'");db.execute("SET threads=4")
-    db.execute('SET temp_directory=?',[str(output/'spill')])
-    # Bound file descriptors independently of the host soft limit.
-    # Each small source is read once into a disk-backed staging table.
-    db.close()
+    identity=hashlib.sha256(json.dumps(sorted(paths)).encode()).hexdigest()
     staging=output/'catalog_work.duckdb'
     db=duckdb.connect(str(staging))
-    db.execute("SET memory_limit='2GB'")
-    db.execute("SET threads=4")
+    db.execute("SET memory_limit='8GB'")
+    db.execute("SET threads=2")
+    db.execute("SET preserve_insertion_order=false")
     db.execute('SET temp_directory=?',[str(output/'spill')])
-    db.execute('DROP TABLE IF EXISTS relations')
-    for offset in range(0,len(paths),128):
-        db.from_parquet(paths[offset:offset+128]).create_view('relation_batch',replace=True)
-        if offset==0:
-            db.execute('CREATE TABLE relations AS SELECT * FROM relation_batch')
-        else:
-            db.execute('INSERT INTO relations SELECT * FROM relation_batch')
-        atomic_json(output/'progress.json',dict(source_files_confirmed=min(offset+128,len(paths)),source_files=len(paths),pid=os.getpid()))
+    progress=output/'progress.json'
+    previous=json.loads(progress.read_text()) if progress.exists() else {}
+    tables={row[0] for row in db.execute("SHOW TABLES").fetchall()}
+    imported=('relations' in tables and previous.get('source_files_confirmed')==len(paths)
+              and previous.get('source_files')==len(paths)
+              and previous.get('input_identity',identity)==identity)
+    if not imported:
+        db.execute('DROP TABLE IF EXISTS relations')
+        for offset in range(0,len(paths),128):
+            db.from_parquet(paths[offset:offset+128]).create_view('relation_batch',replace=True)
+            if offset==0:
+                db.execute('CREATE TABLE relations AS SELECT * FROM relation_batch')
+            else:
+                db.execute('INSERT INTO relations SELECT * FROM relation_batch')
+            atomic_json(progress,dict(source_files_confirmed=min(offset+128,len(paths)),
+                source_files=len(paths),input_identity=identity,pid=os.getpid()))
+    db.execute('CHECKPOINT')
+    atomic_json(progress,dict(source_files_confirmed=len(paths),source_files=len(paths),
+        input_identity=identity,pid=os.getpid(),state='aggregating',reused_import=imported))
     q='''SELECT asset_id,condition_id,min(first_ts) AS first_observed_ms,max(last_ts) AS last_observed_ms,
          sum(events)::UBIGINT AS original_events FROM relations GROUP BY asset_id,condition_id'''
     path=output/'observed_relations.parquet';db.execute(f"COPY ({q}) TO '{path}' (FORMAT PARQUET,COMPRESSION ZSTD)").fetchall()
