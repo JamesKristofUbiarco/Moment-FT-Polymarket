@@ -152,7 +152,10 @@ def pack_windows(census_root, output, split, selected=False, deadline=None, rese
             for name,sha in old['hashes'].items():
                 if digest(output/name)!=sha:raise ValueError(f'Corrupt pack {name}')
             return old['windows']
-        db=duckdb.connect();db.execute("SET memory_limit='2GB'")
+        db=duckdb.connect()
+        db.execute("SET memory_limit='8GB'")
+        db.execute("SET threads=2")
+        db.execute("SET preserve_insertion_order=false")
         db.execute('SET temp_directory=?',[str(output/'spill')]);db.from_parquet(str(index_path)).create_view('idx')
         n=db.execute("SELECT count(*) FROM idx WHERE reason='eligible' AND split=?",[split]).fetchall()[0][0]
         if not n:db.close();raise ValueError('No windows to pack')
