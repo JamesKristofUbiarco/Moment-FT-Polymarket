@@ -1,86 +1,194 @@
-# Polymarket → MOMENT LoRA
+# Polymarket → MOMENT → LoRA
 
-La interfaz principal es `mvp_polymarket_moment_lora.ipynb`. El MVP exige procesar los 164 Parquet originales de la revisión `efe472f1f00a62f2cab1fed2851da439d9c1fe11` y completar entrenamiento y evaluación. **Los experimentos del día completo no equivalen al resultado integral.**
+Este proyecto transforma el historial de órdenes de Polymarket en series de precios y actividad, y utiliza esas series para ajustar un modelo de inteligencia artificial llamado MOMENT. Busca señalar periodos de comportamiento inusual para que una persona pueda revisarlos.
 
-## Entorno reproducible
+**La primera ejecución integral terminó.** Se procesaron los 164 archivos originales, se entrenó el modelo y se compararon sus resultados con dos referencias. Una señal inusual requiere investigación y no demuestra fraude.
 
-```sh
-uv sync --frozen --python 3.14
-uv run python -m unittest discover -s tests/mvp -v
-uv run jupyter lab mvp_polymarket_moment_lora.ipynb
-```
+## Resultado de la ejecución
 
-`uv.lock` fija dependencias transitivas. MOMENT se instala desde el commit oficial `38f7310ad594100747ca2a8357e9c7ca7d323e0e`; el checkpoint se fija a `411e288267f82cce86296dbe4d6c8bc533cc162f`. No se usa pip.
+| Qué se completó | Resultado |
+|---|---:|
+| Archivos originales procesados y verificados | 164 de 164 |
+| Tamaño original | 1.177.799.623.341 bytes, aproximadamente 1,18 TB |
+| Eventos revisados | 217.647.146.849 |
+| Activos identificados | 3.071.967 |
+| Condiciones identificadas | 1.535.992 |
+| Fragmentos de tiempo aptos para el modelo | 51.142.460 |
+| Fragmentos utilizados para entrenar | 33.243.262 |
+| Fragmentos evaluados en validación | 9.044.944 |
+| Fragmentos evaluados en prueba final | 8.854.254 |
+| Actualizaciones de los parámetros durante el entrenamiento | 129.857 |
 
-| Componente observado | Función y justificación |
+Un **evento** es un registro del historial, como un cambio de precio. El **libro de órdenes** reúne las ofertas de compra y venta. Un **activo** identifica un token negociado. Una **condición** identifica la pregunta o resultado al que pertenecen tokens como YES y NO.
+
+El trabajo acumuló **66 h 54 min dentro de sus intentos de ejecución** y **89 h 07 min de calendario**. Hubo interrupciones, recuperación y un apagado solicitado. El tiempo dentro de intentos puede incluir suspensión del equipo y no mide exclusivamente trabajo del procesador. El recorrido inicial de descarga y procesamiento tardó **38 h 56 min** y el entrenamiento **6 h 19 min**.
+
+Los objetivos, las pruebas, los tiempos, los fallos y las propuestas de mejora están en el [informe de la ejecución integral](INFORME_PRUEBA_INTEGRAL_MVP.md).
+
+## Qué aprendió el modelo
+
+En esta ejecución el modelo trabajó con el **spread**, la diferencia entre el mejor precio de venta y el mejor precio de compra. Un spread amplio puede reflejar que resulta más costoso comprar y vender rápidamente.
+
+MOMENT ya tenía aprendizaje previo sobre **series temporales**, números ordenados por tiempo. Se ajustó con nuestros datos mediante **LoRA**, una técnica que añade pequeños grupos de parámetros ajustables y conserva los pesos originales. Los parámetros son números internos que determinan cómo calcula sus respuestas.
+
+Se ajustaron **118.792 parámetros**, incluidos los de la salida del modelo. Las predicciones siguen utilizando todos los pesos preentrenados de MOMENT Small.
+
+La prueba final usó fechas posteriores al entrenamiento y a la validación. La **validación** permite comparar decisiones del modelo antes de hacer la **prueba final**, que mide su desempeño en otro periodo. Los tres métodos recibieron los mismos objetivos.
+
+| Método | Error absoluto medio, MAE | Raíz del error cuadrático medio, RMSE |
+|---|---:|---:|
+| Repetir el último valor observado | **0,00878** | 0,04338 |
+| MOMENT original | 0,01836 | 0,05844 |
+| MOMENT ajustado con LoRA | 0,01157 | **0,04239** |
+
+**MAE** mide cuánto se equivoca una predicción en promedio, sin importar si queda por arriba o por abajo. **RMSE** da más peso a los errores grandes. En ambas columnas, menos es mejor.
+
+LoRA mejoró ambos errores frente a MOMENT original. Repetir el último valor consiguió el menor MAE y LoRA el menor RMSE. Se guardaron **19.055 episodios candidatos** en la prueba final, con identificadores, periodos y puntuaciones. Su utilidad práctica requiere revisión.
+
+## Cómo recorre los datos
+
+El **pipeline** es la secuencia de pasos que transforma los archivos originales hasta obtener el modelo y sus resultados.
+
+1. **Comprobar el inventario.** Verifica lista, tamaños y versión exacta de los 164 archivos.
+2. **Descargar y procesar varios archivos a la vez.** Cada archivo se descarga completo y después se lee por partes pequeñas, para controlar memoria y espacio temporal.
+3. **Crear series por activo y segundo.** Calcula spread, precios medios, extremos, actualizaciones y calidad. A la vez guarda las relaciones entre activos y condiciones.
+4. **Unir y verificar resultados parciales.** Combina registros de un mismo segundo y comprueba conteos antes de liberar temporales.
+5. **Construir el catálogo.** Reúne las relaciones activo–condición ya extraídas, después de producir las series.
+6. **Hacer el censo de ventanas.** Una ventana es un fragmento de 512 segundos. El censo registra cuáles tienen información suficiente, cuáles se excluyen y dónde están en disco.
+7. **Seleccionar y preparar el entrenamiento.** Busca representar fechas, condiciones, fuentes y actividad. En esta ejecución cupieron todas las ventanas aptas del periodo de entrenamiento.
+8. **Entrenar y guardar el modelo.** Ajusta LoRA y guarda puntos de recuperación, con lo necesario para continuar el entrenamiento.
+9. **Evaluar y guardar episodios candidatos.** Compara los tres métodos y comprueba que las salidas estén completas.
+
+Una ventana puede contener huecos. Una **máscara** marca qué posiciones tienen información utilizable y cuáles están ocultas. El objetivo fue un grupo de ocho observaciones completas dentro de la ventana. Los valores que debe predecir el modelo se ocultan en su entrada.
+
+Se procesó el 100 % de los eventos. Aproximadamente el 3,04 % de los bloques de tiempo observados reunió los requisitos del modelo. El censo conserva el motivo de cada exclusión.
+
+## Dónde empezar
+
+La interfaz principal es el [notebook del MVP](mvp_polymarket_moment_lora.ipynb). Un **notebook** es un documento con explicaciones y bloques de código ejecutables. Permite configurar el entorno, revisar recursos, lanzar trabajos y consultar resultados.
+
+Los trabajos largos se ejecutan separados del notebook. En Linux se utilizó **tmux**, una herramienta que mantiene una sesión de terminal abierta aunque se cierre su ventana. Después de apagar la computadora, la recuperación depende de los resultados guardados en disco.
+
+El coordinador del recorrido completo está en [full.py](src/polymarket_mvp/full.py). Su función execute comprueba las condiciones de inicio y su función run_full encadena las etapas.
+
+## Preparar el entorno local
+
+Se necesita **uv**, el programa que instala las bibliotecas y prepara el entorno de Python del proyecto. Una biblioteca es código preparado por otros que utilizamos para tareas como leer archivos o entrenar modelos.
+
+Estas órdenes parten de uv ya instalado. Se ejecutan en una terminal abierta en la carpeta del repositorio.
+
+    uv sync --frozen --python 3.14
+    uv run python -m unittest discover -s tests/mvp -v
+    uv run jupyter lab mvp_polymarket_moment_lora.ipynb
+
+La primera instala las versiones guardadas en uv.lock. La segunda ejecuta las pruebas automatizadas. La tercera abre JupyterLab para usar el notebook.
+
+La corrida se completó en Linux con Ryzen 7 5700X, 32 GB de RAM y RTX 5070 Ti de 16 GB. La versión exacta del proyecto aún requiere una prueba completa en Colab. El uso de la tarjeta gráfica depende también del controlador NVIDIA instalado, que permite a Python comunicarse con ella.
+
+| Herramienta observada | Para qué se utiliza |
 |---|---|
-| Python 3.14.9 / uv 0.11.25 | Entorno local previamente existente, resolución y ejecución aislada |
-| PyArrow 26.0.1 | Lectura incremental, metadatos y persistencia Parquet |
-| Polars 2.1.0 | Validación y agregación vectorizadas; sin bucle Python por evento ordinario |
-| DuckDB 2.0.0 | Fusión por buckets, consultas del censo y evaluación; límite de memoria explícito |
-| huggingface-hub 2.4.0 / httpx bloqueado | Inventario fijado, rangos remotos y descarga recuperable con SHA256 |
-| PyTorch 2.15.0, CUDA 13.2 | Dataset sobre memmap y entrenamiento BF16 en RTX 5070 Ti; controlador local 595.104.02 |
-| momentfm 0.1.5, PEFT 0.21.2, Transformers 5.22.2 | Checkpoint preentrenado y adaptadores q/v, con cabeza entrenable |
-| psutil bloqueado | RSS, CPU, E/S observada y comprobación de procesos |
+| Python 3.14.9 y uv 0.11.25 | Ejecutar el proyecto y administrar sus bibliotecas |
+| PyArrow 26.0.1 | Leer y escribir datos por partes |
+| Polars 2.1.0 | Calcular y agrupar muchas filas |
+| DuckDB 2.0.0 | Consultar, ordenar y reunir datos guardados en disco |
+| PyTorch 2.15.0 y CUDA 13.2 | Calcular el modelo y entrenarlo en la tarjeta gráfica |
+| momentfm 0.1.5 | Implementación de MOMENT |
+| PEFT 0.21.2 y Transformers 5.22.2 | Incorporar LoRA y cargar el modelo |
+| huggingface-hub 2.4.0 y httpx | Consultar la fuente y descargar archivos |
+| psutil 7.2.2 | Consultar memoria, procesos y actividad del equipo |
 
-El notebook puede coordinar un entorno uv aislado en Colab. La versión actual se ejecutó localmente en un kernel Jupyter limpio; **esta implementación exacta todavía no tiene validación de ejecución en Colab**. Se necesita un controlador compatible con la rueda CUDA resuelta. Copiar paquetes de ventanas y checkpoints permite trasladar la etapa GPU sin volver a leer los originales. El almacenamiento temporal de Colab no es durable.
+pyproject.toml declara las bibliotecas necesarias. uv.lock registra sus versiones exactas, incluidas las que necesitan otras bibliotecas. No se utiliza pip directamente.
 
-## Datos y trazabilidad
+## Archivos de src/polymarket_mvp
 
-La ingesta obtiene cotizaciones, actividad, tamaños reportados de operaciones y relaciones activo–condición en la misma lectura. No hay mapeo global previo. Los parciales conservan claves repetidas hasta la consolidación determinista. Las relaciones contradictorias quedan registradas; el censo excluye ventanas con identidad ambigua.
+Una **dependencia** significa que una pieza utiliza otra para realizar su trabajo.
 
-Se distinguen cotización bilateral, lados explícitamente vacíos, valores límite, nulos, estados desconocidos e inválidos. Una ausencia de evento no se convierte en liquidez cero. El tamaño agregado de operaciones es tamaño bruto reportado, sin afirmar volumen negociado deduplicado. La reconstrucción L2 no es una dependencia.
+| Archivo | Responsabilidad |
+|---|---|
+| [__init__.py](src/polymarket_mvp/__init__.py) | Guarda la fuente y versiones exactas del dataset y del modelo |
+| [full.py](src/polymarket_mvp/full.py) | Coordina el recorrido completo, tiempos, presupuesto y recuperación |
+| [parallel.py](src/polymarket_mvp/parallel.py) | Decide cuántos trabajos pueden ejecutarse a la vez según memoria y disco |
+| [worker.py](src/polymarket_mvp/worker.py) | Ejecuta la lectura o unión de resultados de un archivo en un proceso separado |
+| [download.py](src/polymarket_mvp/download.py) | Verifica el inventario, descarga y guarda reportes pequeños de forma segura |
+| [engine.py](src/polymarket_mvp/engine.py) | Lee originales, aplica cálculos, confirma avances y reúne las series |
+| [features.py](src/polymarket_mvp/features.py) | Define cálculos de precios, spread, actividad y calidad |
+| [storage.py](src/polymarket_mvp/storage.py) | Registra resultados confirmados y comprueba su integridad |
+| [columnar.py](src/polymarket_mvp/columnar.py) | Configura cómo guardar y comprimir tablas sin perder valores |
+| [catalog.py](src/polymarket_mvp/catalog.py) | Reúne activos y condiciones y busca contradicciones |
+| [windows.py](src/polymarket_mvp/windows.py) | Hace el censo, selecciona ejemplos y prepara entradas del modelo |
+| [model.py](src/polymarket_mvp/model.py) | Carga MOMENT, incorpora LoRA, entrena, guarda, recarga y evalúa |
+| [reporting.py](src/polymarket_mvp/reporting.py) | Consulta progreso y estima tiempo y espacio a partir de pruebas medidas |
+| [runner.py](src/polymarket_mvp/runner.py) | Permite probar el procesamiento completo de un solo archivo diario |
+| [io_audit.py](src/polymarket_mvp/io_audit.py) | Resume registros de lectura y transferencia de experimentos de desarrollo |
+| [gates.py](src/polymarket_mvp/gates.py) | Conserva un control anterior de 48 horas; el FULL actual usa reporting.py y full.py |
 
-Cada original tiene `source.json`, metadatos Parquet, `original_reads.jsonl`, manifiesto SQLite, progreso y reportes. El manifiesto confirma una unidad solo después de publicar y sincronizar los objetos inmutables. Los objetos huérfanos no se consultan. Antes de confiar en unidades existentes se verifican los hashes. La compactación confirma y verifica reemplazos antes de retirar parciales; conserva las relaciones originales.
+windows.py también conserva una implementación anterior del censo para comparaciones. La función activa es la última definición de build_census. Esa duplicación y el control antiguo de gates.py quedan como limpieza pendiente del código.
 
-Las lecturas HTTP contabilizan payload obtenido por el cliente, no cabeceras/TLS ni operaciones físicas internas del servidor. El log distingue decodificaciones de grupos, rangos remotos y reintentos; las métricas del SO muestran tráfico físico local observado. Las pasadas de consolidación, validación y hashes se reportan aparte. Los benchmarks de desarrollo repiten originales deliberadamente; la cobertura final elige una sola representación por archivo.
+## Dónde están los datos y resultados
 
-## Ejecución y recuperación
+**Parquet** es el formato de las tablas grandes. Guarda por columnas y permite leer partes concretas. **JSON** es el formato de reportes pequeños, legible como texto. **SQLite** es una base de datos guardada en un archivo, usada aquí para registrar avances confirmados.
 
-```sh
-uv run python -m polymarket_mvp.runner --date 2026-06-06 --tag experimento
-uv run python -c 'from polymarket_mvp.reporting import progress; print(progress("runs/mvp"))'
-uv run python -c 'from polymarket_mvp.reporting import projection; print(projection("runs/mvp"))'
-uv run python -m polymarket_mvp.full --root runs/mvp --projection runs/mvp/projection.json
-```
+| Ruta | Contenido |
+|---|---|
+| runs/mvp/inventory.json | Lista de originales y versión fijada |
+| runs/mvp/inventory_enriched.json | Conteos y detalles internos de los originales |
+| runs/mvp/staging/ | Descargas temporales |
+| runs/mvp/full/ | Series y comprobaciones de cada original |
+| runs/mvp/coverage.json | Cobertura y conteos reconciliados |
+| runs/mvp/catalog/ | Relaciones entre activos y condiciones |
+| runs/mvp/full_census/ | Censo, exclusiones y selección |
+| runs/mvp/full_packs/train/ | Entradas numéricas preparadas para entrenamiento |
+| runs/mvp/full_model/ | Modelo ajustado, historial y puntos de recuperación |
+| runs/mvp/full_evaluation/ | Métricas, errores y episodios de validación y prueba |
+| runs/mvp/mission.json | Historial de intentos, etapas y pausas |
+| runs/mvp/full_status.json | Último estado registrado |
+| runs/mvp/full_result.json | Resultado integral final |
 
-La última operación usa 120 horas por defecto y falla antes de iniciar FULL si faltan cuatro benchmarks completos representativos y un ensayo end-to-end o si las puertas de tiempo/disco no pasan. No es una autorización para una ejecución de varios días. El notebook permite lanzar procesos independientes mediante tmux y verificar su sesión. Consultar también PID, estado y logs; la existencia de un PID antiguo no prueba actividad.
+Los datos grandes y el modelo final permanecen en la computadora local, dentro de runs/, excluido de Git. GitHub contiene código, informe y evidencias pequeñas. El adaptador en evidence/pilot corresponde al ensayo previo de un día. El adaptador integral está en runs/mvp/full_model/adapter/.
 
-Para reanudar, repetir los mismos argumentos sobre la misma salida. Una identidad de fuentes o reglas de características diferente exige una salida nueva. Los lotes no son la identidad del resultado; los límites de unidades de confirmación sí se fijan. Los checkpoints de entrenamiento incluyen optimizador, RNG y cursor en límites del optimizador. `train(..., resume=True)` valida identidad y SHA256.
+## Consultar el resultado existente
 
-La evaluación final usa cortes UTC: entrenamiento antes del 21/06; validación hasta el 16/07; prueba hasta el 11/08. Las ventanas que cruzan fronteras se excluyen. El experimento intradiario del 06/06 usa otros cortes, documentados como exploratorios; no es prueba final independiente.
+Esta orden lee el resumen final sin lanzar de nuevo la ejecución.
 
-## Evidencia medida hasta ahora
+    uv run python -c "import json; d=json.load(open('runs/mvp/full_result.json')); print('Completo:', d['complete']); print(d['test'])"
 
-- Día 2026-06-06 completo: 93.595.651 eventos, 934 grupos, 70.363 activos y 35.636 condiciones. Descarga de 510.963.243 bytes verificada con SHA256.
-- Ingesta inicial: 193,3 s. Fusión de bordes vectorizada: 104,7 s. Eliminar una agrupación parcial redundante se mide en los siguientes días completos.
-- Consolidación COPY global: ensayo censurado; E/S excesiva. Particionado COPY: aproximadamente 49 GB escritos en un ensayo completo. Escritores Arrow incrementales: 1,7 GB escritos y 127,1 s de consolidación sobre el mismo día; los costos de los intentos anteriores se conservan por separado.
-- Censo de ese día: 488.621 bloques. El experimento cronológico intradiario dejó 21.247 elegibles: 9.002 train, 5.987 validación, 6.258 prueba. La cobertura mínima de entrenamiento fue 5.387 ventanas. Las exclusiones y el sesgo hacia actividad suficiente se conservan en el censo.
-- LoRA: 9.002 ventanas, 36 actualizaciones, 118.792 parámetros entrenables. Gradientes y cambios reales verificados. Adaptadores y checkpoints guardados.
-- Microbatch 256: aproximadamente 1.907 ventanas/s; la selección final se calculará con el censo integral y presupuesto restante, no con esta cifra aislada.
-- Recuperación real en procesos separados: diferencia máxima de parámetros 0 respecto a una ejecución continua.
-- Prueba exploratoria: MAE persistencia 0,01043; MOMENT inicial 0,02087; LoRA 0,01967. LoRA no supera persistencia.
+El informe explica las interrupciones y correcciones. Hubo un límite de archivos abiertos y dos fallos por límites de memoria de DuckDB. Se resolvieron leyendo relaciones en grupos pequeños y ajustando memoria y cantidad de tareas simultáneas en las consultas afectadas.
 
-Los reportes exactos, límites de medición y estados actuales están en `runs/mvp/`. No se afirma cobertura 164/164 mientras `coverage.json` no la verifique, ni entrenamiento integral mientras no exista un `full_result.json` válido.
+## Reproducir o reanudar
 
-## Evidencias incluidas en Git
+El FULL requiere el inventario detallado, pruebas de archivos completos y un ensayo que incluya entrenamiento y evaluación. Esos preparativos permiten estimar recursos antes de empezar. Descargar el repositorio por sí solo no crea los datos locales ni esos reportes.
 
-- [Benchmark concurrente](evidence/benchmark/four_partitions.json). Cuatro particiones completas, 27,45 GB y 5.054.034.321 eventos procesados en 1 h 32 min 19 s con los originales en disco. Extrapolar linealmente por bytes da unas 66 horas de procesamiento local. Esa cifra no incluye descarga, censo, entrenamiento ni evaluación.
-- [Variante optimizada del 6 de junio](evidence/benchmark/optimized_june_06.json). Procesó 93.595.651 eventos en 159,7 s con el original en disco.
-- [Piloto LoRA](evidence/pilot/). Incluye el adaptador exploratorio del 6 de junio, los resultados de validación y prueba, y la verificación de recuperación del entrenamiento.
+Para repetir el ensayo de un día con los preparativos disponibles:
 
-El procesamiento integral y el fine-tuning definitivo están pendientes. Los originales, derivados voluminosos, entornos y estados de ejecución permanecen en el espacio de trabajo local.
+    uv run python herramientas/preflight_full.py runs/mvp
 
-## Continuación FULL
+Para calcular una proyección con los reportes disponibles:
 
-El presupuesto activo empieza al iniciar FULL y se registra en `runs/mvp/mission.json`. Para reanudar, usa la misma proyección congelada y el presupuesto original. Si se autoriza tiempo adicional, agrega `--extra-hours H` una sola vez para registrar la extensión. Las pausas entre intentos se registran por separado. Si hubo un apagado abrupto, el último heartbeat confirma el mínimo de actividad antes de la interrupción.
+    uv run python -c "from polymarket_mvp.reporting import projection; print(projection('runs/mvp', budget_hours=120))"
 
-```sh
-tmux new-session -d -s polymarket-full 'exec uv run --no-sync python -u -m polymarket_mvp.full --root runs/mvp --projection runs/mvp/full_launch_projection.json --budget-hours 120 >>runs/mvp/full.log 2>&1'
-tmux has-session -t polymarket-full
-cat runs/mvp/full_status.json runs/mvp/full_progress.json
-```
+El comando utilizado para lanzar o reanudar la corrida completa fue:
 
-El ensayo de preparación se reproduce con `uv run python herramientas/preflight_full.py runs/mvp`. La proyección acepta una ruta explícita a su recibo mediante el argumento `preparation`. Validación y prueba se empaquetan por separado y conservan todas sus ventanas elegibles. Cada paquete temporal se libera después de confirmar los hashes del resultado de su evaluación.
+    uv run python -u -m polymarket_mvp.full --root runs/mvp --projection runs/mvp/full_launch_projection.json --budget-hours 120
 
-Consulta la [auditoría y presupuesto del lanzamiento](evidence/benchmark/full_launch_audit.md).
+--root indica la carpeta de resultados. --projection señala el reporte del presupuesto calculado. --budget-hours fija las horas autorizadas. Para reanudar se conserva la carpeta y configuración. Una ampliación autorizada puede registrarse con --extra-hours H, donde H es la cantidad de horas adicionales.
+
+Si ya existe el resultado integral final, el coordinador devuelve ese resultado. Cambiar características, fechas o modelo requiere una salida independiente y preparación compatible. No se deben mezclar resultados de distintas configuraciones.
+
+## Versiones de datos y modelo
+
+Una **revisión** identifica una versión exacta, para que una actualización de la fuente no cambie silenciosamente la prueba.
+
+- Dataset Joseph3222/polymarket-orderbook, configuración orderbook. Revisión efe472f1f00a62f2cab1fed2851da439d9c1fe11.
+- Modelo AutonLab/MOMENT-1-small. Revisión 411e288267f82cce86296dbe4d6c8bc533cc162f.
+- Código momentfm fijado al commit 38f7310ad594100747ca2a8357e9c7ca7d323e0e. Un commit es una versión guardada en Git.
+
+El entrenamiento usa datos anteriores al 21 de junio de 2026. La validación va del 21 de junio al 16 de julio y la prueba del 16 de julio al 11 de agosto. Los finales son exclusivos y las fechas usan UTC. Las ventanas que cruzan fronteras se excluyen.
+
+## Limitaciones conocidas
+
+- El modelo se evaluó en ventanas con suficientes observaciones, una fracción de los bloques observados.
+- Repetir el último valor sigue siendo mejor en MAE. El informe propone comparaciones adicionales para entender cuándo aporta LoRA.
+- La revisión humana de episodios, nombres legibles de mercado y utilidad empresarial siguen pendientes.
+- La prueba exacta en Colab y la medición integral de consumo eléctrico no se realizaron.
+- El último full_benchmark.json describe una reanudación corta. El tiempo real de procesamiento debe consultarse en mission.json, como explica el informe.
+- Algunas celdas del notebook y herramientas conservan referencias a ensayos previos. Las métricas finales están en full_result.json y full_evaluation/.
