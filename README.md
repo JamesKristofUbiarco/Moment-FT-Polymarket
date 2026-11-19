@@ -1,5 +1,9 @@
 # Polymarket → MOMENT → LoRA
 
+[Abrir el notebook autocontenido en Google Colab](https://colab.research.google.com/github/JamesKristofUbiarco/Moment-FT-Polymarket/blob/main/output/jupyter-notebook/polymarket_moment_colab.ipynb) · [Ver el notebook en GitHub](output/jupyter-notebook/polymarket_moment_colab.ipynb)
+
+El notebook de Colab incluye el código y las versiones de las bibliotecas. Por defecto procesa un archivo diario completo y llega hasta el entrenamiento y la evaluación. El modo integral necesita almacenamiento persistente y tiempo suficiente para procesar los 164 archivos. Las cinco pruebas del código incluido pasaron en Jupyter local. La ejecución en Colab sigue pendiente de verificar.
+
 Este proyecto transforma el historial de órdenes de Polymarket en series de precios y actividad, y utiliza esas series para ajustar un modelo de inteligencia artificial llamado MOMENT. Busca señalar periodos de comportamiento inusual para que una persona pueda revisarlos.
 
 **La primera ejecución integral terminó.** Se procesaron los 164 archivos originales, se entrenó el modelo y se compararon sus resultados con dos referencias. Una señal inusual requiere investigación y no demuestra fraude.
