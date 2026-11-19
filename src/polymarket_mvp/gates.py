@@ -1,5 +1,7 @@
 """Explicit feasibility gates; estimates are never completion evidence."""
+
 from dataclasses import dataclass, asdict
+
 
 @dataclass(frozen=True)
 class Projection:
@@ -14,11 +16,20 @@ class Projection:
 
     def report(self):
         result = asdict(self)
-        total = sum((self.processing_seconds, self.census_seconds,
-                     self.training_seconds, self.evaluation_seconds, self.elapsed_seconds))
-        result.update(projected_hours=total / 3600,
-                      performance_gate=self.full_file_benchmarks >= 3 and total <= 48 * 3600,
-                      cardinality_gate=self.minimum_windows <= self.budget_windows)
+        total = sum(
+            (
+                self.processing_seconds,
+                self.census_seconds,
+                self.training_seconds,
+                self.evaluation_seconds,
+                self.elapsed_seconds,
+            )
+        )
+        result.update(
+            projected_hours=total / 3600,
+            performance_gate=self.full_file_benchmarks >= 3 and total <= 48 * 3600,
+            cardinality_gate=self.minimum_windows <= self.budget_windows,
+        )
         return result
 
     def require_full(self):
